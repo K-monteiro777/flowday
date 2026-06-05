@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlowDay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ==================== AUTH ==================== -->
+  <div id="auth-screen" class="screen active">
+    <div class="auth-bg">
+      <div class="auth-blob"></div>
+      <div class="auth-blob b2"></div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">FlowDay</span>
+      </div>
+      <p class="auth-tagline">Organize sua rotina com fluxo.</p>
+
+      <div class="auth-tabs">
+        <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Entrar</button>
+        <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Cadastrar</button>
+      </div>
+
+      <!-- Login -->
+      <div id="form-login" class="auth-form active">
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="seu@email.com" />
+        </div>
+        <div class="input-group">
+          <label>Senha</label>
+          <input type="password" id="login-password" placeholder="••••••••" />
+        </div>
+        <button class="btn-primary" onclick="login()">Entrar</button>
+      </div>
+
+      <!-- Register -->
+      <div id="form-register" class="auth-form">
+        <div class="input-group">
+          <label>Nome</label>
+          <input type="text" id="register-name" placeholder="Seu nome" />
+        </div>
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="register-email" placeholder="seu@email.com" />
+        </div>
+        <div class="input-group">
+          <label>Senha</label>
+          <input type="password" id="register-password" placeholder="mín. 6 caracteres" />
+        </div>
+        <button class="btn-primary" onclick="register()">Criar conta</button>
+      </div>
+
+      <div id="auth-msg" class="auth-msg"></div>
+    </div>
+  </div>
+
+  <!-- ==================== APP ==================== -->
+  <div id="app-screen" class="screen">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">FlowDay</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" onclick="goTo('dashboard')" data-page="dashboard">
+          <span class="nav-icon">🏠</span><span class="nav-label">Início</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('tarefas')" data-page="tarefas">
+          <span class="nav-icon">✅</span><span class="nav-label">Tarefas</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('rotinas')" data-page="rotinas">
+          <span class="nav-icon">🔁</span><span class="nav-label">Rotinas</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('notas')" data-page="notas">
+          <span class="nav-icon">📝</span><span class="nav-label">Notas</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('hidratacao')" data-page="hidratacao">
+          <span class="nav-icon">💧</span><span class="nav-label">Hidratação</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('calendario')" data-page="calendario">
+          <span class="nav-icon">📅</span><span class="nav-label">Calendário</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('perfil')" data-page="perfil">
+          <span class="nav-icon">👤</span><span class="nav-label">Perfil</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+          <span id="theme-icon">☀️</span>
+        </button>
+        <div class="user-info" onclick="goTo('perfil')" style="cursor:pointer" title="Ver perfil">
+          <div class="sidebar-avatar" id="sidebar-avatar">
+            <img id="sidebar-avatar-img" src="" alt="" style="display:none" />
+            <span id="sidebar-avatar-initials"></span>
+          </div>
+          <span id="user-name-display">Usuário</span>
+        </div>
+        <button class="btn-logout" onclick="logout()" title="Sair">⏻</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Dashboard -->
+      <div id="page-dashboard" class="page active">
+        <div class="page-header">
+          <h1>Olá, <span id="greeting-name">usuário</span> 👋</h1>
+          <p class="page-sub" id="greeting-date"></p>
+        </div>
+        <div class="dashboard-grid">
+          <div class="dash-card" onclick="goTo('tarefas')">
+            <div class="dash-card-icon">✅</div>
+            <div class="dash-card-info">
+              <span class="dash-card-label">Tarefas</span>
+              <span class="dash-card-count" id="count-tarefas">0 pendentes</span>
+            </div>
+          </div>
+          <div class="dash-card" onclick="goTo('rotinas')">
+            <div class="dash-card-icon">🔁</div>
+            <div class="dash-card-info">
+              <span class="dash-card-label">Rotinas</span>
+              <span class="dash-card-count" id="count-rotinas">0 ativas</span>
+            </div>
+          </div>
+          <div class="dash-card" onclick="goTo('notas')">
+            <div class="dash-card-icon">📝</div>
+            <div class="dash-card-info">
+              <span class="dash-card-label">Notas</span>
+              <span class="dash-card-count" id="count-notas">0 notas</span>
+            </div>
+          </div>
+          <div class="dash-card" onclick="goTo('hidratacao')">
+            <div class="dash-card-icon">💧</div>
+            <div class="dash-card-info">
+              <span class="dash-card-label">Hidratação</span>
+              <span class="dash-card-count" id="count-hidratacao">0 / 2000 ml</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarefas -->
+      <div id="page-tarefas" class="page">
+        <div class="page-header">
+          <h1>✅ Tarefas</h1>
+          <button class="btn-primary btn-sm" onclick="openModal('modal-tarefa')">+ Nova tarefa</button>
+        </div>
+        <div id="lista-tarefas" class="lista"></div>
+      </div>
+
+      <!-- Rotinas -->
+      <div id="page-rotinas" class="page">
+        <div class="page-header">
+          <h1>🔁 Rotinas</h1>
+          <button class="btn-primary btn-sm" onclick="openModal('modal-rotina')">+ Nova rotina</button>
+        </div>
+        <div id="lista-rotinas" class="lista"></div>
+      </div>
+
+      <!-- Notas -->
+      <div id="page-notas" class="page">
+        <div class="page-header">
+          <h1>📝 Notas</h1>
+          <button class="btn-primary btn-sm" onclick="openModal('modal-nota')">+ Nova nota</button>
+        </div>
+        <div id="lista-notas" class="lista notas-grid"></div>
+      </div>
+
+      <!-- Hidratação -->
+      <div id="page-hidratacao" class="page">
+        <div class="page-header">
+          <h1>💧 Hidratação</h1>
+        </div>
+        <div class="hidra-container">
+          <div class="hidra-circle">
+            <svg viewBox="0 0 120 120" class="hidra-svg">
+              <circle cx="60" cy="60" r="54" class="hidra-track"/>
+              <circle cx="60" cy="60" r="54" class="hidra-fill" id="hidra-circle"/>
+            </svg>
+            <div class="hidra-center">
+              <span id="hidra-atual">0</span>
+              <span class="hidra-unit">ml</span>
+            </div>
+          </div>
+          <p class="hidra-meta">Meta: <span id="hidra-meta-text">2000</span> ml</p>
+          <div class="hidra-btns">
+            <button class="btn-hidra" onclick="addAgua(150)">+150ml</button>
+            <button class="btn-hidra" onclick="addAgua(200)">+200ml</button>
+            <button class="btn-hidra" onclick="addAgua(300)">+300ml</button>
+            <button class="btn-hidra" onclick="addAgua(500)">+500ml</button>
+          </div>
+          <button class="btn-outline" onclick="resetAgua()">Zerar hoje</button>
+        </div>
+      </div>
+
+      <!-- Perfil -->
+      <div id="page-perfil" class="page">
+        <div class="page-header">
+          <h1>👤 Perfil</h1>
+        </div>
+        <div class="perfil-container">
+          <div class="perfil-foto-area">
+            <div class="perfil-avatar" id="perfil-avatar">
+              <img id="perfil-avatar-img" src="" alt="" style="display:none" />
+              <span id="perfil-avatar-initials" class="perfil-initials"></span>
+            </div>
+            <label class="btn-outline btn-foto" for="foto-input">
+              📷 Alterar foto
+            </label>
+            <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="trocarFoto(event)" />
+            <button class="btn-remove-foto" id="btn-remove-foto" onclick="removerFoto()" style="display:none">
+              Remover foto
+            </button>
+          </div>
+          <div class="perfil-info">
+            <div class="input-group">
+              <label>Nome</label>
+              <input type="text" id="perfil-nome" placeholder="Seu nome" />
+            </div>
+            <div class="input-group">
+              <label>Email</label>
+              <input type="email" id="perfil-email" disabled />
+            </div>
+            <button class="btn-primary" onclick="salvarPerfil()">Salvar alterações</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendário -->
+      <div id="page-calendario" class="page">
+        <div class="page-header">
+          <h1>📅 Calendário</h1>
+          <button class="btn-primary btn-sm" onclick="openModal('modal-evento')">+ Novo evento</button>
+        </div>
+        <div class="cal-header">
+          <button class="btn-cal-nav" onclick="changeMonth(-1)">‹</button>
+          <span id="cal-titulo" class="cal-titulo"></span>
+          <button class="btn-cal-nav" onclick="changeMonth(1)">›</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div id="lista-eventos" class="eventos-lista"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODAIS ==================== -->
+
+  <!-- Modal Tarefa -->
+  <div id="modal-tarefa" class="modal-overlay" onclick="closeModalOutside(event,'modal-tarefa')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Nova Tarefa</h2>
+        <button onclick="closeModal('modal-tarefa')">✕</button>
+      </div>
+      <div class="input-group">
+        <label>Título</label>
+        <input type="text" id="tarefa-titulo" placeholder="Nome da tarefa" />
+      </div>
+      <div class="input-group">
+        <label>Descrição</label>
+        <textarea id="tarefa-desc" placeholder="Detalhes..." rows="3"></textarea>
+      </div>
+      <div class="input-group">
+        <label>Data de vencimento</label>
+        <input type="date" id="tarefa-data" />
+      </div>
+      <button class="btn-primary" onclick="salvarTarefa()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- Modal Rotina -->
+  <div id="modal-rotina" class="modal-overlay" onclick="closeModalOutside(event,'modal-rotina')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Nova Rotina</h2>
+        <button onclick="closeModal('modal-rotina')">✕</button>
+      </div>
+      <div class="input-group">
+        <label>Título</label>
+        <input type="text" id="rotina-titulo" placeholder="Ex: Acordar cedo" />
+      </div>
+      <div class="input-group">
+        <label>Horário</label>
+        <input type="time" id="rotina-horario" />
+      </div>
+      <div class="input-group">
+        <label>Dias da semana</label>
+        <div class="dias-grid">
+          <label><input type="checkbox" value="Dom" /> Dom</label>
+          <label><input type="checkbox" value="Seg" /> Seg</label>
+          <label><input type="checkbox" value="Ter" /> Ter</label>
+          <label><input type="checkbox" value="Qua" /> Qua</label>
+          <label><input type="checkbox" value="Qui" /> Qui</label>
+          <label><input type="checkbox" value="Sex" /> Sex</label>
+          <label><input type="checkbox" value="Sáb" /> Sáb</label>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="salvarRotina()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- Modal Nota -->
+  <div id="modal-nota" class="modal-overlay" onclick="closeModalOutside(event,'modal-nota')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Nova Nota</h2>
+        <button onclick="closeModal('modal-nota')">✕</button>
+      </div>
+      <div class="input-group">
+        <label>Título</label>
+        <input type="text" id="nota-titulo" placeholder="Título da nota" />
+      </div>
+      <div class="input-group">
+        <label>Conteúdo</label>
+        <textarea id="nota-conteudo" placeholder="Escreva aqui..." rows="5"></textarea>
+      </div>
+      <button class="btn-primary" onclick="salvarNota()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- Modal Evento -->
+  <div id="modal-evento" class="modal-overlay" onclick="closeModalOutside(event,'modal-evento')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Novo Evento</h2>
+        <button onclick="closeModal('modal-evento')">✕</button>
+      </div>
+      <div class="input-group">
+        <label>Título</label>
+        <input type="text" id="evento-titulo" placeholder="Nome do evento" />
+      </div>
+      <div class="input-group">
+        <label>Data</label>
+        <input type="date" id="evento-data" />
+      </div>
+      <div class="input-group">
+        <label>Horário (opcional)</label>
+        <input type="time" id="evento-hora" />
+      </div>
+      <div class="input-group">
+        <label>Descrição (opcional)</label>
+        <textarea id="evento-desc" placeholder="Detalhes..." rows="2"></textarea>
+      </div>
+      <button class="btn-primary" onclick="salvarEvento()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
+</body>
+</html>
