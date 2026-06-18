@@ -422,7 +422,53 @@ body {
   box-shadow: 0 8px 24px var(--shadow);
 }
 
-.dash-card-icon { font-size: 2rem; }
+.dash-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--bg3);
+  color: var(--orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.35rem;
+  position: relative;
+}
+
+.dash-card-icon-ring {
+  background: transparent;
+}
+
+.mini-hidra-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.mini-hidra-track {
+  fill: none;
+  stroke: var(--bg3);
+  stroke-width: 4;
+}
+
+.mini-hidra-fill {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 113.097;
+  stroke-dashoffset: 113.097;
+  transition: stroke-dashoffset 0.8s ease;
+}
+
+.dash-card-icon-ring i {
+  position: relative;
+  z-index: 1;
+  font-size: 1.05rem;
+}
 
 .dash-card-info {
   display: flex;
@@ -602,6 +648,87 @@ body {
 }
 
 .btn-hidra:hover { background: var(--orange); color: white; border-color: var(--orange); }
+
+/* ===== ROTINA DA SEMANA (DASHBOARD) ===== */
+.dash-rotina-semana {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.rotina-semana-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1.4rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rotina-semana-header h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+#rotina-semana-contagem {
+  font-size: 0.8rem;
+  color: var(--text2);
+}
+
+.rotina-semana-dias {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.6rem;
+}
+
+.dia-semana-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.dia-pill {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--bg3);
+  border: 2px solid transparent;
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.dia-pill.concluido {
+  background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+  box-shadow: 0 4px 14px rgba(255,107,43,0.35);
+}
+
+.dia-pill.hoje {
+  cursor: pointer;
+}
+
+.dia-pill.hoje:hover {
+  filter: brightness(1.15);
+}
+
+.dia-pill.hoje-pendente {
+  border: 2px dashed var(--orange-light);
+  background: var(--bg2);
+}
+
+.dia-pill-label {
+  font-size: 0.75rem;
+  color: var(--text3);
+}
+
+.dia-pill-label.hoje {
+  color: var(--orange);
+  font-weight: 700;
+}
 
 /* ===== CALENDÁRIO ===== */
 .cal-header {

@@ -6,6 +6,7 @@
   <title>FlowDay</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -74,25 +75,25 @@
 
       <nav class="sidebar-nav">
         <button class="nav-btn active" onclick="goTo('dashboard')" data-page="dashboard">
-          <span class="nav-icon">🏠</span><span class="nav-label">Início</span>
+          <span class="nav-label">Início</span>
         </button>
         <button class="nav-btn" onclick="goTo('tarefas')" data-page="tarefas">
-          <span class="nav-icon">✅</span><span class="nav-label">Tarefas</span>
+          <span class="nav-label">Tarefas</span>
         </button>
         <button class="nav-btn" onclick="goTo('rotinas')" data-page="rotinas">
-          <span class="nav-icon">🔁</span><span class="nav-label">Rotinas</span>
+          <span class="nav-label">Rotinas</span>
         </button>
         <button class="nav-btn" onclick="goTo('notas')" data-page="notas">
-          <span class="nav-icon">📝</span><span class="nav-label">Notas</span>
+          <span class="nav-label">Notas</span>
         </button>
         <button class="nav-btn" onclick="goTo('hidratacao')" data-page="hidratacao">
-          <span class="nav-icon">💧</span><span class="nav-label">Hidratação</span>
+          <span class="nav-label">Hidratação</span>
         </button>
         <button class="nav-btn" onclick="goTo('calendario')" data-page="calendario">
-          <span class="nav-icon">📅</span><span class="nav-label">Calendário</span>
+          <span class="nav-label">Calendário</span>
         </button>
         <button class="nav-btn" onclick="goTo('perfil')" data-page="perfil">
-          <span class="nav-icon">👤</span><span class="nav-label">Perfil</span>
+          <span class="nav-label">Perfil</span>
         </button>
       </nav>
 
@@ -117,45 +118,59 @@
       <!-- Dashboard -->
       <div id="page-dashboard" class="page active">
         <div class="page-header">
-          <h1>Olá, <span id="greeting-name">usuário</span> 👋</h1>
+          <h1>Olá, <span id="greeting-name">usuário</span></h1>
           <p class="page-sub" id="greeting-date"></p>
         </div>
         <div class="dashboard-grid">
           <div class="dash-card" onclick="goTo('tarefas')">
-            <div class="dash-card-icon">✅</div>
+            <div class="dash-card-icon"><i class="ti ti-checklist"></i></div>
             <div class="dash-card-info">
               <span class="dash-card-label">Tarefas</span>
               <span class="dash-card-count" id="count-tarefas">0 pendentes</span>
             </div>
           </div>
           <div class="dash-card" onclick="goTo('rotinas')">
-            <div class="dash-card-icon">🔁</div>
+            <div class="dash-card-icon"><i class="ti ti-refresh"></i></div>
             <div class="dash-card-info">
               <span class="dash-card-label">Rotinas</span>
               <span class="dash-card-count" id="count-rotinas">0 ativas</span>
             </div>
           </div>
           <div class="dash-card" onclick="goTo('notas')">
-            <div class="dash-card-icon">📝</div>
+            <div class="dash-card-icon"><i class="ti ti-notes"></i></div>
             <div class="dash-card-info">
               <span class="dash-card-label">Notas</span>
               <span class="dash-card-count" id="count-notas">0 notas</span>
             </div>
           </div>
           <div class="dash-card" onclick="goTo('hidratacao')">
-            <div class="dash-card-icon">💧</div>
+            <div class="dash-card-icon dash-card-icon-ring">
+              <svg viewBox="0 0 44 44" class="mini-hidra-svg">
+                <circle cx="22" cy="22" r="18" class="mini-hidra-track"/>
+                <circle cx="22" cy="22" r="18" class="mini-hidra-fill" id="mini-hidra-circle"/>
+              </svg>
+              <i class="ti ti-droplet"></i>
+            </div>
             <div class="dash-card-info">
               <span class="dash-card-label">Hidratação</span>
               <span class="dash-card-count" id="count-hidratacao">0 / 2000 ml</span>
             </div>
           </div>
         </div>
+
+        <div class="dash-rotina-semana">
+          <div class="rotina-semana-header">
+            <h3>Rotina da semana</h3>
+            <span id="rotina-semana-contagem">0 de 7 dias concluídos</span>
+          </div>
+          <div class="rotina-semana-dias" id="rotina-semana-dias"></div>
+        </div>
       </div>
 
       <!-- Tarefas -->
       <div id="page-tarefas" class="page">
         <div class="page-header">
-          <h1>✅ Tarefas</h1>
+          <h1> Tarefas</h1>
           <button class="btn-primary btn-sm" onclick="openModal('modal-tarefa')">+ Nova tarefa</button>
         </div>
         <div id="lista-tarefas" class="lista"></div>
@@ -164,7 +179,7 @@
       <!-- Rotinas -->
       <div id="page-rotinas" class="page">
         <div class="page-header">
-          <h1>🔁 Rotinas</h1>
+          <h1> Rotinas</h1>
           <button class="btn-primary btn-sm" onclick="openModal('modal-rotina')">+ Nova rotina</button>
         </div>
         <div id="lista-rotinas" class="lista"></div>
@@ -173,7 +188,7 @@
       <!-- Notas -->
       <div id="page-notas" class="page">
         <div class="page-header">
-          <h1>📝 Notas</h1>
+          <h1> Notas</h1>
           <button class="btn-primary btn-sm" onclick="openModal('modal-nota')">+ Nova nota</button>
         </div>
         <div id="lista-notas" class="lista notas-grid"></div>
@@ -182,7 +197,7 @@
       <!-- Hidratação -->
       <div id="page-hidratacao" class="page">
         <div class="page-header">
-          <h1>💧 Hidratação</h1>
+          <h1> Hidratação</h1>
         </div>
         <div class="hidra-container">
           <div class="hidra-circle">
@@ -209,7 +224,7 @@
       <!-- Perfil -->
       <div id="page-perfil" class="page">
         <div class="page-header">
-          <h1>👤 Perfil</h1>
+          <h1> Perfil</h1>
         </div>
         <div class="perfil-container">
           <div class="perfil-foto-area">
@@ -218,7 +233,7 @@
               <span id="perfil-avatar-initials" class="perfil-initials"></span>
             </div>
             <label class="btn-outline btn-foto" for="foto-input">
-              📷 Alterar foto
+               Alterar foto
             </label>
             <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="trocarFoto(event)" />
             <button class="btn-remove-foto" id="btn-remove-foto" onclick="removerFoto()" style="display:none">
@@ -242,7 +257,7 @@
       <!-- Calendário -->
       <div id="page-calendario" class="page">
         <div class="page-header">
-          <h1>📅 Calendário</h1>
+          <h1> Calendário</h1>
           <button class="btn-primary btn-sm" onclick="openModal('modal-evento')">+ Novo evento</button>
         </div>
         <div class="cal-header">

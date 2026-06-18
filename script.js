@@ -117,6 +117,7 @@ function goTo(page) {
   document.getElementById('page-' + page).classList.add('active');
   document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
 
+  if (page === 'dashboard') loadDashboard();
   if (page === 'tarefas') loadTarefas();
   if (page === 'rotinas') loadRotinas();
   if (page === 'notas') loadNotas();
@@ -175,6 +176,121 @@ async function loadDashboard() {
   const atual = hd?.quantidade_ml || 0;
   const meta = hd?.meta_ml || 2000;
   document.getElementById('count-hidratacao').textContent = `${atual} / ${meta} ml`;
+
+  const miniCirc = 2 * Math.PI * 18; // 113.097
+  const miniPct = Math.min(atual / meta, 1);
+  document.getElementById('mini-hidra-circle').style.strokeDashoffset = miniCirc * (1 - miniPct);
+
+  loadRotinaSemana();
+}
+
+// ===== ROTINA DA SEMANA =====
+let rotinaSemanaCache = {};
+let toggleEmAndamento = false;
+
+function toYMD(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getSemanaAtual() {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay(); // 0=dom ... 6=sáb
+  const diffSegunda = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const segunda = new Date(hoje);
+  segunda.setDate(hoje.getDate() + diffSegunda);
+  segunda.setHours(0, 0, 0, 0);
+
+  const dias = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(segunda);
+    d.setDate(segunda.getDate() + i);
+    dias.push(d);
+  }
+  return dias;
+}
+
+async function loadRotinaSemana() {
+  if (!currentUser) return;
+  const dias = getSemanaAtual();
+  const inicio = toYMD(dias[0]);
+  const fim = toYMD(dias[6]);
+
+  const { data } = await sb.from('progresso_semana')
+    .select('data')
+    .eq('user_id', currentUser.id)
+    .gte('data', inicio)
+    .lte('data', fim);
+
+  rotinaSemanaCache = {};
+  (data || []).forEach(r => { rotinaSemanaCache[r.data] = true; });
+
+  renderRotinaSemana(dias);
+}
+
+function renderRotinaSemana(dias) {
+  const NOMES_DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+  const hojeStr = toYMD(new Date());
+  let concluidos = 0;
+
+  const html = dias.map((d, i) => {
+    const dataStr = toYMD(d);
+    const concluido = !!rotinaSemanaCache[dataStr];
+    if (concluido) concluidos++;
+    const isHoje = dataStr === hojeStr;
+
+    const pillClasses = ['dia-pill'];
+    if (concluido) pillClasses.push('concluido');
+    if (isHoje) pillClasses.push('hoje');
+    if (isHoje && !concluido) pillClasses.push('hoje-pendente');
+
+    return `
+      <div class="dia-semana-col">
+        <div class="${pillClasses.join(' ')}" ${isHoje ? `onclick="toggleDiaSemana('${dataStr}')"` : ''}></div>
+        <span class="dia-pill-label ${isHoje ? 'hoje' : ''}">${NOMES_DIAS[i]}</span>
+      </div>`;
+  }).join('');
+
+  document.getElementById('rotina-semana-dias').innerHTML = html;
+  document.getElementById('rotina-semana-contagem').textContent = `${concluidos} de 7 dias concluídos`;
+}
+
+async function toggleDiaSemana(dataStr) {
+  const hojeStr = toYMD(new Date());
+  if (dataStr !== hojeStr) return; // só o dia de hoje pode ser alterado
+  if (toggleEmAndamento) return; // evita clique duplo / corrida de requisições
+  toggleEmAndamento = true;
+
+  const estaConcluido = !!rotinaSemanaCache[dataStr];
+
+  if (estaConcluido) {
+    const { error } = await sb.from('progresso_semana').delete()
+      .eq('user_id', currentUser.id).eq('data', dataStr);
+    if (error) {
+      console.error(error);
+      showToast('Erro ao salvar progresso.');
+      toggleEmAndamento = false;
+      return;
+    }
+    delete rotinaSemanaCache[dataStr];
+  } else {
+    const { error } = await sb.from('progresso_semana').upsert(
+      { user_id: currentUser.id, data: dataStr, concluido: true },
+      { onConflict: 'user_id,data' }
+    );
+    if (error) {
+      console.error(error);
+      showToast('Erro ao salvar progresso.');
+      toggleEmAndamento = false;
+      return;
+    }
+    rotinaSemanaCache[dataStr] = true;
+  }
+
+  renderRotinaSemana(getSemanaAtual());
+  toggleEmAndamento = false;
 }
 
 // ===== TAREFAS =====
@@ -183,7 +299,7 @@ async function loadTarefas() {
   const el = document.getElementById('lista-tarefas');
 
   if (!data || data.length === 0) {
-    el.innerHTML = `<div class="empty-state">✅<p>Nenhuma tarefa ainda. Crie uma!</p></div>`;
+    el.innerHTML = `<div class="empty-state"><p>Nenhuma tarefa ainda. Crie uma!</p></div>`;
     return;
   }
 
@@ -195,7 +311,7 @@ async function loadTarefas() {
       <div class="item-info">
         <div class="item-title">${t.titulo}</div>
         ${t.descricao ? `<div class="item-sub">${t.descricao}</div>` : ''}
-        ${t.data_vencimento ? `<div class="item-sub">📅 ${formatDate(t.data_vencimento)}</div>` : ''}
+        ${t.data_vencimento ? `<div class="item-sub"> ${formatDate(t.data_vencimento)}</div>` : ''}
       </div>
       <button class="item-del" onclick="deletarTarefa('${t.id}')">🗑</button>
     </div>
@@ -218,7 +334,7 @@ async function salvarTarefa() {
   document.getElementById('tarefa-titulo').value = '';
   document.getElementById('tarefa-desc').value = '';
   document.getElementById('tarefa-data').value = '';
-  showToast('Tarefa criada! ✅');
+  showToast('Tarefa criada! ');
   loadTarefas();
   loadDashboard();
 }
@@ -242,7 +358,7 @@ async function loadRotinas() {
   const el = document.getElementById('lista-rotinas');
 
   if (!data || data.length === 0) {
-    el.innerHTML = `<div class="empty-state">🔁<p>Nenhuma rotina ainda. Crie uma!</p></div>`;
+    el.innerHTML = `<div class="empty-state"><p>Nenhuma rotina ainda. Crie uma!</p></div>`;
     return;
   }
 
@@ -254,7 +370,7 @@ async function loadRotinas() {
       <div class="item-info">
         <div class="item-title">${r.titulo}</div>
         <div class="item-sub">
-          ${r.horario ? `🕐 ${r.horario.slice(0,5)}` : ''}
+          ${r.horario ? ` ${r.horario.slice(0,5)}` : ''}
           ${r.horario && r.dias_semana?.length ? ' · ' : ''}
         </div>
         ${r.dias_semana?.length ? `
@@ -285,7 +401,7 @@ async function salvarRotina() {
   document.getElementById('rotina-titulo').value = '';
   document.getElementById('rotina-horario').value = '';
   document.querySelectorAll('.dias-grid input').forEach(i => i.checked = false);
-  showToast('Rotina criada! 🔁');
+  showToast('Rotina criada! ');
   loadRotinas();
   loadDashboard();
 }
@@ -308,7 +424,7 @@ async function loadNotas() {
   const el = document.getElementById('lista-notas');
 
   if (!data || data.length === 0) {
-    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1">📝<p>Nenhuma nota ainda. Crie uma!</p></div>`;
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Nenhuma nota ainda. Crie uma!</p></div>`;
     return;
   }
 
@@ -335,7 +451,7 @@ async function salvarNota() {
   closeModal('modal-nota');
   document.getElementById('nota-titulo').value = '';
   document.getElementById('nota-conteudo').value = '';
-  showToast('Nota salva! 📝');
+  showToast('Nota salva! ');
   loadNotas();
   loadDashboard();
 }
@@ -390,7 +506,7 @@ async function addAgua(ml) {
 
   updateHidraUI();
   loadDashboard();
-  if (novoTotal >= hidraData.meta_ml) showToast('Meta de hidratação batida! 💧🎉');
+  if (novoTotal >= hidraData.meta_ml) showToast('Meta de hidratação batida!');
 }
 
 async function resetAgua() {
@@ -472,7 +588,7 @@ function renderEventosList() {
   const mesesNomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
   if (eventosCache.length === 0) {
-    el.innerHTML = `<div class="empty-state">📅<p>Nenhum evento neste mês. Clique em um dia para adicionar!</p></div>`;
+    el.innerHTML = `<div class="empty-state"><p>Nenhum evento neste mês. Clique em um dia para adicionar!</p></div>`;
     return;
   }
 
@@ -490,7 +606,7 @@ function renderEventosList() {
         </div>
         <div class="evento-info">
           <div class="evento-titulo">${ev.titulo}</div>
-          ${hora ? `<div class="evento-horario">🕐 ${hora}${ev.descricao ? ' &nbsp;·&nbsp; ' + ev.descricao : ''}</div>` : (ev.descricao ? `<div class="evento-horario">${ev.descricao}</div>` : '')}
+          ${hora ? `<div class="evento-horario"> ${hora}${ev.descricao ? ' &nbsp;·&nbsp; ' + ev.descricao : ''}</div>` : (ev.descricao ? `<div class="evento-horario">${ev.descricao}</div>` : '')}
         </div>
         <button class="item-del" onclick="deletarEvento('${ev.id}')">🗑</button>
       </div>
@@ -534,7 +650,7 @@ async function salvarEvento() {
   document.getElementById('evento-data').value = '';
   document.getElementById('evento-hora').value = '';
   document.getElementById('evento-desc').value = '';
-  showToast('Evento criado! 📅');
+  showToast('Evento criado! ');
 
   await fetchEventos();
   renderCalendar();
@@ -623,7 +739,7 @@ function trocarFoto(event) {
     }
     perfilCache.foto = base64;
     atualizarAvatares();
-    showToast('Foto atualizada! 📸');
+    showToast('Foto atualizada! ');
   };
   reader.readAsDataURL(file);
 }
@@ -647,7 +763,7 @@ async function salvarPerfil() {
   document.getElementById('greeting-name').textContent = nome;
   document.getElementById('user-name-display').textContent = nome;
   atualizarAvatares();
-  showToast('Perfil salvo! ✅');
+  showToast('Perfil salvo! ');
 }
 
 // ===== UTILS =====
