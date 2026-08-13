@@ -133,7 +133,7 @@
             <div class="dash-card-icon"><i class="ti ti-refresh"></i></div>
             <div class="dash-card-info">
               <span class="dash-card-label">Rotinas</span>
-              <span class="dash-card-count" id="count-rotinas">0 ativas</span>
+              <span class="dash-card-count" id="count-rotinas">0 concluídas</span>
             </div>
           </div>
           <div class="dash-card" onclick="goTo('notas')">
@@ -212,12 +212,19 @@
           </div>
           <p class="hidra-meta">Meta: <span id="hidra-meta-text">2000</span> ml</p>
           <div class="hidra-btns">
+            <button class="btn-hidra" onclick="addAgua(50)">+50ml</button>
+            <button class="btn-hidra" onclick="addAgua(100)">+100ml</button>
             <button class="btn-hidra" onclick="addAgua(150)">+150ml</button>
             <button class="btn-hidra" onclick="addAgua(200)">+200ml</button>
             <button class="btn-hidra" onclick="addAgua(300)">+300ml</button>
             <button class="btn-hidra" onclick="addAgua(500)">+500ml</button>
           </div>
-          <button class="btn-outline" onclick="resetAgua()">Zerar hoje</button>
+          <div class="hidra-acoes">
+            <button class="btn-hidra-undo" id="btn-hidra-undo" onclick="undoAgua()" disabled title="Desfazer último registro">
+              <i class="ti ti-arrow-back-up"></i> Desfazer
+            </button>
+            <button class="btn-outline" onclick="resetAgua()">Zerar hoje</button>
+          </div>
         </div>
       </div>
 
@@ -371,6 +378,18 @@
         <textarea id="evento-desc" placeholder="Detalhes..." rows="2"></textarea>
       </div>
       <button class="btn-primary" onclick="salvarEvento()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- Modal Dia (lista de eventos do dia clicado) -->
+  <div id="modal-dia" class="modal-overlay" onclick="closeModalOutside(event,'modal-dia')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-dia-titulo">Dia</h2>
+        <button onclick="closeModal('modal-dia')">✕</button>
+      </div>
+      <div id="modal-dia-lista" class="eventos-lista"></div>
+      <button class="btn-primary" onclick="abrirNovoEventoDoDia()">+ Adicionar evento nesse dia</button>
     </div>
   </div>
 

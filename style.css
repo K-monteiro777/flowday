@@ -397,6 +397,36 @@ body {
 
 .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
 
+.hidra-acoes {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.btn-hidra-undo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.6rem 1.2rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-hidra-undo i { font-size: 1rem; }
+
+.btn-hidra-undo:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
+
+.btn-hidra-undo:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ===== DASHBOARD ===== */
 .dashboard-grid {
   display: grid;
@@ -707,12 +737,9 @@ body {
   box-shadow: 0 4px 14px rgba(255,107,43,0.35);
 }
 
-.dia-pill.hoje {
-  cursor: pointer;
-}
-
-.dia-pill.hoje:hover {
-  filter: brightness(1.15);
+.dia-pill.sem-rotina {
+  background: repeating-linear-gradient(45deg, var(--bg2), var(--bg2) 6px, var(--bg3) 6px, var(--bg3) 12px);
+  opacity: 0.5;
 }
 
 .dia-pill.hoje-pendente {
@@ -728,6 +755,12 @@ body {
 .dia-pill-label.hoje {
   color: var(--orange);
   font-weight: 700;
+}
+
+.feita-hoje-tag {
+  color: var(--orange);
+  font-weight: 600;
+  margin-left: 0.4rem;
 }
 
 /* ===== CALENDÁRIO ===== */

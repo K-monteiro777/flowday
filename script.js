@@ -80,12 +80,20 @@ async function register() {
   if (password.length < 6) return setAuthMsg('Senha mínima de 6 caracteres.', 'error');
 
   setAuthMsg('Criando conta...', '');
-  const { error } = await sb.auth.signUp({
+  const { data, error } = await sb.auth.signUp({
     email, password,
     options: { data: { name } }
   });
-  if (error) setAuthMsg(error.message, 'error');
-  else setAuthMsg('Conta criada! Verifique seu email para confirmar.', 'success');
+  if (error) return setAuthMsg(error.message, 'error');
+
+  // Truque do Supabase: se o email já tem conta confirmada, o signUp NÃO
+  // retorna erro (por segurança, pra não revelar emails cadastrados), mas
+  // o array "identities" vem vazio. É assim que detectamos o duplicado.
+  if (data?.user && data.user.identities && data.user.identities.length === 0) {
+    return setAuthMsg('Esse email já tem uma conta. Faça login.', 'error');
+  }
+
+  setAuthMsg('Conta criada! Verifique seu email para confirmar.', 'success');
 }
 
 async function logout() {
@@ -162,9 +170,10 @@ async function loadDashboard() {
   const { data: tf } = await sb.from('tarefas').select('*').eq('user_id', currentUser.id).eq('concluida', false);
   document.getElementById('count-tarefas').textContent = `${tf?.length || 0} pendentes`;
 
-  // Rotinas ativas
-  const { data: rt } = await sb.from('rotinas').select('*').eq('user_id', currentUser.id).eq('ativa', true);
-  document.getElementById('count-rotinas').textContent = `${rt?.length || 0} ativas`;
+  // Rotinas concluídas hoje
+  const hojeStr = toYMD(new Date());
+  const { data: rt } = await sb.from('rotina_conclusoes').select('id').eq('user_id', currentUser.id).eq('data', hojeStr);
+  document.getElementById('count-rotinas').textContent = `${rt?.length || 0} concluídas`;
 
   // Notas
   const { data: nt } = await sb.from('notas').select('*').eq('user_id', currentUser.id);
@@ -212,85 +221,74 @@ function getSemanaAtual() {
   return dias;
 }
 
+const DIA_SEMANA_NOME = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']; // igual ao value dos checkboxes de dias_semana
+
+// A barra semanal agora é 100% derivada das rotinas + conclusões reais.
+// Um dia fica "concluído" (verde) quando TODAS as rotinas agendadas pra
+// aquele dia da semana foram marcadas como feitas naquela data.
+// Dias sem nenhuma rotina agendada ficam neutros (não contam pra nada).
 async function loadRotinaSemana() {
   if (!currentUser) return;
   const dias = getSemanaAtual();
   const inicio = toYMD(dias[0]);
   const fim = toYMD(dias[6]);
 
-  const { data } = await sb.from('progresso_semana')
-    .select('data')
+  const { data: rotinas } = await sb.from('rotinas')
+    .select('id, dias_semana')
+    .eq('user_id', currentUser.id);
+
+  const { data: conclusoes } = await sb.from('rotina_conclusoes')
+    .select('rotina_id, data')
     .eq('user_id', currentUser.id)
     .gte('data', inicio)
     .lte('data', fim);
 
-  rotinaSemanaCache = {};
-  (data || []).forEach(r => { rotinaSemanaCache[r.data] = true; });
+  const feitasPorDia = {}; // { 'YYYY-MM-DD': Set(rotina_id) }
+  (conclusoes || []).forEach(c => {
+    if (!feitasPorDia[c.data]) feitasPorDia[c.data] = new Set();
+    feitasPorDia[c.data].add(c.rotina_id);
+  });
 
+  rotinaSemanaCache = { rotinas: rotinas || [], feitasPorDia };
   renderRotinaSemana(dias);
 }
 
 function renderRotinaSemana(dias) {
   const NOMES_DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
   const hojeStr = toYMD(new Date());
+  const { rotinas = [], feitasPorDia = {} } = rotinaSemanaCache;
   let concluidos = 0;
+  let diasComRotina = 0;
 
   const html = dias.map((d, i) => {
     const dataStr = toYMD(d);
-    const concluido = !!rotinaSemanaCache[dataStr];
-    if (concluido) concluidos++;
+    const nomeDiaSemana = DIA_SEMANA_NOME[d.getDay()];
+    const agendadasHoje = rotinas.filter(r => (r.dias_semana || []).includes(nomeDiaSemana));
+    const feitas = feitasPorDia[dataStr] || new Set();
+    const temRotina = agendadasHoje.length > 0;
+    const concluido = temRotina && agendadasHoje.every(r => feitas.has(r.id));
+    if (temRotina) {
+      diasComRotina++;
+      if (concluido) concluidos++;
+    }
     const isHoje = dataStr === hojeStr;
 
     const pillClasses = ['dia-pill'];
-    if (concluido) pillClasses.push('concluido');
+    if (!temRotina) pillClasses.push('sem-rotina');
+    else if (concluido) pillClasses.push('concluido');
     if (isHoje) pillClasses.push('hoje');
-    if (isHoje && !concluido) pillClasses.push('hoje-pendente');
+    if (isHoje && temRotina && !concluido) pillClasses.push('hoje-pendente');
 
     return `
       <div class="dia-semana-col">
-        <div class="${pillClasses.join(' ')}" ${isHoje ? `onclick="toggleDiaSemana('${dataStr}')"` : ''}></div>
+        <div class="${pillClasses.join(' ')}" title="${temRotina ? (concluido ? 'Rotinas concluídas' : 'Rotinas pendentes') : 'Sem rotina agendada'}"></div>
         <span class="dia-pill-label ${isHoje ? 'hoje' : ''}">${NOMES_DIAS[i]}</span>
       </div>`;
   }).join('');
 
   document.getElementById('rotina-semana-dias').innerHTML = html;
-  document.getElementById('rotina-semana-contagem').textContent = `${concluidos} de 7 dias concluídos`;
-}
-
-async function toggleDiaSemana(dataStr) {
-  const hojeStr = toYMD(new Date());
-  if (dataStr !== hojeStr) return; // só o dia de hoje pode ser alterado
-  if (toggleEmAndamento) return; // evita clique duplo / corrida de requisições
-  toggleEmAndamento = true;
-
-  const estaConcluido = !!rotinaSemanaCache[dataStr];
-
-  if (estaConcluido) {
-    const { error } = await sb.from('progresso_semana').delete()
-      .eq('user_id', currentUser.id).eq('data', dataStr);
-    if (error) {
-      console.error(error);
-      showToast('Erro ao salvar progresso.');
-      toggleEmAndamento = false;
-      return;
-    }
-    delete rotinaSemanaCache[dataStr];
-  } else {
-    const { error } = await sb.from('progresso_semana').upsert(
-      { user_id: currentUser.id, data: dataStr, concluido: true },
-      { onConflict: 'user_id,data' }
-    );
-    if (error) {
-      console.error(error);
-      showToast('Erro ao salvar progresso.');
-      toggleEmAndamento = false;
-      return;
-    }
-    rotinaSemanaCache[dataStr] = true;
-  }
-
-  renderRotinaSemana(getSemanaAtual());
-  toggleEmAndamento = false;
+  document.getElementById('rotina-semana-contagem').textContent =
+    diasComRotina === 0 ? 'Nenhuma rotina agendada essa semana' : `${concluidos} de ${diasComRotina} dias com rotina concluídos`;
 }
 
 // ===== TAREFAS =====
@@ -354,7 +352,12 @@ async function deletarTarefa(id) {
 
 // ===== ROTINAS =====
 async function loadRotinas() {
+  const hojeStr = toYMD(new Date());
   const { data } = await sb.from('rotinas').select('*').eq('user_id', currentUser.id).order('criado_em', { ascending: false });
+  const { data: feitasHoje } = await sb.from('rotina_conclusoes')
+    .select('rotina_id').eq('user_id', currentUser.id).eq('data', hojeStr);
+  const feitasSet = new Set((feitasHoje || []).map(f => f.rotina_id));
+
   const el = document.getElementById('lista-rotinas');
 
   if (!data || data.length === 0) {
@@ -362,16 +365,19 @@ async function loadRotinas() {
     return;
   }
 
-  el.innerHTML = data.map(r => `
+  el.innerHTML = data.map(r => {
+    const feitaHoje = feitasSet.has(r.id);
+    return `
     <div class="item-card">
-      <div class="item-check ${r.ativa ? 'checked' : ''}" onclick="toggleRotina('${r.id}', ${r.ativa})">
-        ${r.ativa ? '✓' : ''}
+      <div class="item-check ${feitaHoje ? 'checked' : ''}" title="Marcar como feita hoje" onclick="toggleRotina('${r.id}', ${feitaHoje})">
+        ${feitaHoje ? '✓' : ''}
       </div>
       <div class="item-info">
         <div class="item-title">${r.titulo}</div>
         <div class="item-sub">
           ${r.horario ? ` ${r.horario.slice(0,5)}` : ''}
           ${r.horario && r.dias_semana?.length ? ' · ' : ''}
+          ${feitaHoje ? '<span class="feita-hoje-tag">feita hoje</span>' : ''}
         </div>
         ${r.dias_semana?.length ? `
           <div class="dias-badges">
@@ -380,7 +386,8 @@ async function loadRotinas() {
       </div>
       <button class="item-del" onclick="deletarRotina('${r.id}')">🗑</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 async function salvarRotina() {
@@ -406,9 +413,21 @@ async function salvarRotina() {
   loadDashboard();
 }
 
-async function toggleRotina(id, atual) {
-  await sb.from('rotinas').update({ ativa: !atual }).eq('id', id);
+async function toggleRotina(id, estaFeitaHoje) {
+  const hojeStr = toYMD(new Date());
+  if (estaFeitaHoje) {
+    await sb.from('rotina_conclusoes').delete()
+      .eq('user_id', currentUser.id).eq('rotina_id', id).eq('data', hojeStr);
+  } else {
+    const { error } = await sb.from('rotina_conclusoes').upsert(
+      { user_id: currentUser.id, rotina_id: id, data: hojeStr },
+      { onConflict: 'user_id,rotina_id,data' }
+    );
+    if (error) { console.error(error); showToast('Erro ao salvar progresso.'); return; }
+  }
   loadRotinas();
+  loadRotinaSemana();
+  loadDashboard();
 }
 
 async function deletarRotina(id) {
@@ -470,8 +489,9 @@ async function loadHidratacao() {
 
   if (data) {
     hidraData = data;
+    if (!Array.isArray(hidraData.historico)) hidraData.historico = [];
   } else {
-    hidraData = { quantidade_ml: 0, meta_ml: 2000, id: null };
+    hidraData = { quantidade_ml: 0, meta_ml: 2000, id: null, historico: [] };
   }
 
   updateHidraUI();
@@ -485,21 +505,27 @@ function updateHidraUI() {
   const pct = Math.min(hidraData.quantidade_ml / hidraData.meta_ml, 1);
   const offset = circunf * (1 - pct);
   document.getElementById('hidra-circle').style.strokeDashoffset = offset;
+
+  const btnUndo = document.getElementById('btn-hidra-undo');
+  btnUndo.disabled = !hidraData.historico || hidraData.historico.length === 0;
 }
 
 async function addAgua(ml) {
   const novoTotal = hidraData.quantidade_ml + ml;
   const hoje = new Date().toISOString().split('T')[0];
+  const novoHistorico = [...(hidraData.historico || []), ml];
 
   if (hidraData.id) {
-    await sb.from('hidratacao').update({ quantidade_ml: novoTotal }).eq('id', hidraData.id);
+    await sb.from('hidratacao').update({ quantidade_ml: novoTotal, historico: novoHistorico }).eq('id', hidraData.id);
     hidraData.quantidade_ml = novoTotal;
+    hidraData.historico = novoHistorico;
   } else {
     const { data } = await sb.from('hidratacao').insert({
       user_id: currentUser.id,
       quantidade_ml: novoTotal,
       meta_ml: 2000,
       data: hoje,
+      historico: novoHistorico,
     }).select().single();
     if (data) hidraData = data;
   }
@@ -509,10 +535,26 @@ async function addAgua(ml) {
   if (novoTotal >= hidraData.meta_ml) showToast('Meta de hidratação batida!');
 }
 
+async function undoAgua() {
+  if (!hidraData.historico || hidraData.historico.length === 0 || !hidraData.id) return;
+  const novoHistorico = hidraData.historico.slice(0, -1);
+  const ultimoValor = hidraData.historico[hidraData.historico.length - 1];
+  const novoTotal = Math.max(0, hidraData.quantidade_ml - ultimoValor);
+
+  await sb.from('hidratacao').update({ quantidade_ml: novoTotal, historico: novoHistorico }).eq('id', hidraData.id);
+  hidraData.quantidade_ml = novoTotal;
+  hidraData.historico = novoHistorico;
+
+  updateHidraUI();
+  loadDashboard();
+  showToast(`Desfeito: -${ultimoValor}ml`);
+}
+
 async function resetAgua() {
   if (!hidraData.id) return;
-  await sb.from('hidratacao').update({ quantidade_ml: 0 }).eq('id', hidraData.id);
+  await sb.from('hidratacao').update({ quantidade_ml: 0, historico: [] }).eq('id', hidraData.id);
   hidraData.quantidade_ml = 0;
+  hidraData.historico = [];
   updateHidraUI();
   loadDashboard();
   showToast('Hidratação zerada.');
@@ -619,9 +661,41 @@ function changeMonth(delta) {
   loadCalendario();
 }
 
+let diaSelecionado = null;
+
 function clickDia(ano, mes, dia) {
   const dataStr = `${ano}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-  document.getElementById('evento-data').value = dataStr;
+  diaSelecionado = dataStr;
+
+  const eventosDoDia = eventosCache.filter(ev => String(ev.data_inicio).slice(0, 10) === dataStr);
+
+  const [y, m, d] = dataStr.split('-');
+  const dataFormatada = new Date(y, m - 1, d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', weekday: 'long' });
+  document.getElementById('modal-dia-titulo').textContent = dataFormatada;
+
+  const listaEl = document.getElementById('modal-dia-lista');
+  if (eventosDoDia.length === 0) {
+    listaEl.innerHTML = `<div class="empty-state"><p>Nenhum evento nesse dia ainda.</p></div>`;
+  } else {
+    listaEl.innerHTML = eventosDoDia.map(ev => {
+      const hora = String(ev.data_inicio).split('T')[1]?.slice(0, 5);
+      return `
+        <div class="evento-card">
+          <div class="evento-info">
+            <div class="evento-titulo">${ev.titulo}</div>
+            ${hora ? `<div class="evento-horario"> ${hora}${ev.descricao ? ' &nbsp;·&nbsp; ' + ev.descricao : ''}</div>` : (ev.descricao ? `<div class="evento-horario">${ev.descricao}</div>` : '')}
+          </div>
+          <button class="item-del" onclick="deletarEvento('${ev.id}'); clickDia(${ano},${mes},${dia});">🗑</button>
+        </div>`;
+    }).join('');
+  }
+
+  openModal('modal-dia');
+}
+
+function abrirNovoEventoDoDia() {
+  closeModal('modal-dia');
+  document.getElementById('evento-data').value = diaSelecionado || '';
   document.getElementById('evento-hora').value = '';
   openModal('modal-evento');
 }
